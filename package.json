@@ -1,0 +1,30 @@
+{
+  "name": "socket.io-rpc-client",
+  "version": "0.8.9",
+  "description": "client for socket.io-rpc compatible with node/browser/angular",
+  "main": "socket.io-rpc-client-node.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/capaj/socket.io-rpc-client.git"
+  },
+  "keywords": [
+    "socket.io",
+    "realtime",
+    "promise",
+    "rpc"
+  ],
+  "dependencies": {
+    "socket.io-client": "1.2.1",
+    "bluebird": "~2.7",
+    "dom-storage": "^2.0.1"
+  },
+  "author": "capajj@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/capaj/socket.io-rpc-client/issues"
+  },
+  "homepage": "https://github.com/capaj/socket.io-rpc-client"
+}
