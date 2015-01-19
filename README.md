@@ -1,6 +1,8 @@
 # socket.io-rpc-client
 client library for a socket.io-rpc 
 
+All libraries are written in commonJS module style, so you need to use SystemJS loader to be able to use them in the browser. Browserify might work(except loading the files themselves) if you set it up correctly, but might be a pain to set up.
+Angular.js lib contains special rpc-controller directive, which when compiled asynchronously loads server channel and instantiates classic angular controller when this channel is ready.
 #Usage
 ```npm install socket.io-rpc-client```
 then in Node.js:
