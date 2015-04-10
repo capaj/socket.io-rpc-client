@@ -25,7 +25,10 @@ myChannel.getTime().then(t => { //calls getTime function on the server
 });    
 ```
 For the browser, don't forget to map your socket.io-client in your jspm config.js file:
-```"socket.io-client": "/socket.io/socket.io",```
+```
+"socket.io-client": "/socket.io/socket.io",
+"bluebird": "npm:bluebird@2.9.24",
+```
 
 For complete examples refer to [socket.io-rpc project](https://github.com/capaj/socket.io-rpc)
 
