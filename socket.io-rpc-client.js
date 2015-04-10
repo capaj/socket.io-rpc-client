@@ -1,4 +1,4 @@
-var Promise = require('npm:bluebird');
+var Promise = require('bluebird');
 var noop = function(){};
 
 var clientInjectableFn = require('rpc/client');
