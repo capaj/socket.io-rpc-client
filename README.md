@@ -5,7 +5,9 @@ All libraries are written in commonJS module style, so you need to use SystemJS 
 Angular.js lib contains special rpc-controller directive, which when compiled asynchronously loads server channel and instantiates classic angular controller when this channel is ready.
 #Usage
 ```npm install socket.io-rpc-client```  for serverside usage
+
 ```jspm install socket.io-rpc-client``` for clientside usage
+
 then in Node.js:
 ```javascript
 var backend = rpcClient('http://localhost:8031');
