@@ -1,6 +1,6 @@
 {
   "name": "socket.io-rpc-client",
-  "version": "0.8.13",
+  "version": "0.8.14",
   "description": "client for socket.io-rpc compatible with node/browser/angular",
   "main": "socket.io-rpc-client-node.js",
   "scripts": {
@@ -17,14 +17,15 @@
     "rpc"
   ],
   "dependencies": {
-    "socket.io-client": "^1",
+    "socket.io-client": "^1.3",
     "bluebird": "^2",
     "dom-storage": "^2.0.1"
   },
   "jspm": {
     "main": "socket.io-rpc-client.js",
     "dependencies": {
-      "bluebird": "^2"
+      "bluebird": "^2",
+      "socket.io-client": "^1.3"
     }
   },
   "author": "capajj@gmail.com",
