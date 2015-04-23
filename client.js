@@ -1,6 +1,7 @@
+var io = require('socket.io-client');
+
 module.exports = function ($rootScope, $log, $q) {
 	var nop = function(){};
-	var io = require('socket.io-client');
 	var backends = {};
 	/**
 	 * pseudo constructor, connects to remote server which exposes RPC calls, if trying to connect to a backend, which
