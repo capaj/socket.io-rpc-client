@@ -1,7 +1,8 @@
-var io = require('socket.io-client');
-
 module.exports = function ($rootScope, $log, $q) {
 	var nop = function(){};
+	var io = require('socket.io-client');
+	var traverse = require('traverse');
+
 	var backends = {};
 	/**
 	 * pseudo constructor, connects to remote server which exposes RPC calls, if trying to connect to a backend, which
@@ -23,13 +24,13 @@ module.exports = function ($rootScope, $log, $q) {
 		}
 		var invocationCounter = 0;
 		var endCounter = 0;
-		var serverChannels = {};
+		var serverPaths = {};
 		var clientChannels = {};
 		var deferreds = [];
 		var baseURL;
 		var rpcMaster;
 		var knownTemplates = {};
-
+		var serverNodes = {};
 		var serverRunDate;  // used for invalidating the cache
 		var serverRunDateDeferred = $q.defer();
 		serverRunDateDeferred.promise.then(function (date) {
@@ -68,42 +69,14 @@ module.exports = function ($rootScope, $log, $q) {
 			}
 		}
 
-		var _loadChannel = function (name, deferred) {
-			if (!serverChannels.hasOwnProperty(name)) {
-				serverChannels[name] = {rpcProps: {}};
-			}
-			var channel = serverChannels[name];
-			channel.rpcProps._loadDef = deferred;
-
-			serverRunDateDeferred.promise.then(function () {
-
-				var cacheKey = getCacheKey(name);
-				var cached = localStorage[cacheKey];
-				if (cached) {
-					cached = JSON.parse(cached);
-					if (serverRunDate < new Date(cached.cDate)) {
-						connectToServerChannel(channel, name);
-						registerRemoteFunctions(cached, false); // will register functions from cached manifest
-					} else {
-						//cache has been invalidated
-						delete localStorage[cacheKey];
-						rpcMaster.emit('load channel', {name: name});
-					}
-				} else {
-					rpcMaster.emit('load channel', {name: name});
-				}
-			});
-
-			return channel.rpcProps._loadDef.promise;
-		};
 
 		var registerRemoteFunctions = function (data, storeInCache) {
-			var channel = serverChannels[data.name];
+			var channel = serverNodes[data.name];
 			var remoteMethodInvocation = function (fnName) {
 				channel[fnName] = function () {
 					invocationCounter++;
 					channel.rpcProps._socket.emit('call',
-						{Id: invocationCounter, fnName: fnName, args: Array.prototype.slice.call(arguments, 0)}
+						{Id: invocationCounter, fnPath: fnName, args: Array.prototype.slice.call(arguments, 0)}
 					);
 					if (invocationCounter == 1) {
 						rpc.onBatchStarts(invocationCounter);
@@ -140,105 +113,30 @@ module.exports = function ($rootScope, $log, $q) {
 		};
 
 		/**
-		 *
-		 * @param {Object} channel
-		 * @param {String} name
+		 * @param {String} path
+		 * @param {Object} def
+		 * @private
 		 */
-		var connectToServerChannel = function (channel, name) {
-			var rpcProps = channel.rpcProps;
+		var _fetchNode = function(path, def) {
+			serverNodes[path] = def;
+			rpcMaster.emit('node', path);
 
-			if (rpcProps._socket) {
-				$log.info('connect to server channel ignored, because we already have _socket' + name);
-				return; //this was fired upon reconnect, so let's not register any more event subscribers
-			}
-			var reconDfd = $q.defer();
-
-			rpcProps._socket = io.connect(baseURL + '/rpc/' + name)
-				.on('resolve', function (data) {
-					deferreds[data.Id].resolve(data.value);
-					callEnded(data.Id);
-				})
-				.on('reject', function (data) {
-					if (data && data.Id) {
-						deferreds[data.Id].reject(data.reason);
-						//$log.error("Call " + name + ':' + data.Id + " is rejected, reason ", data.reason);
-
-						callEnded(data.Id);
-					} else {
-						$log.error("Channel: " + name + "Reject response doesn't have id: ", data);
-					}
-				})
-				.on('connectFailed', function (reason) {
-					$log.error('unable to connect to namespace ' + name, reason);
-					rpcProps._loadDef.reject(reason);
-				})
-				.on('disconnect', function (data) {
-					reconDfd = $q.defer();
-					rpcProps._connected = false;
-					rpcProps._loadDef = reconDfd;
-					$log.warn("Server channel " + name + " disconnected.");
-				})
-				.on('reconnect', function () {
-					$log.info('reconnected channel' + name);
-					_loadChannel(name, reconDfd);
-				});
 		};
 
 		var rpc = {
-			loadAllChannels: function () {
-				if (rpcMaster) {
-					rpcMaster.__channelListLoad = $q.defer();
-					rpcMaster.emit('load channelList');
-					rpcMaster
-						.on('channels', function (data) {
-							var name = data.list.pop();
-							while(name) {
-								serverChannels[name] = {};
-								_loadChannel(name);
-								name = data.list.pop();
-							}
-							rpcMaster.__channelListLoad.resolve(serverChannels);
-							$rootScope.$apply();
-
-						});
-					return rpcMaster.__channelListLoad.promise;
-				} else {
-					$log.error("no connection to master");
-				}
-
-			},
 			/**
 			 * for a particular channel this will connect and prepare the channel for use, if called more than once for one
 			 * channel, it will return it's promise
 			 * @param {string} name
 			 * @returns {Promise}
 			 */
-			loadChannel: function (name) {
-				if (serverChannels.hasOwnProperty(name)) {
-					return serverChannels[name].rpcProps._loadDef.promise;
+			fetchNode: function (path) {
+				if (serverNodes.hasOwnProperty(path)) {
+					return serverNodes[path]._loadDef.promise;
 				} else {
 					var def = $q.defer();
-					_loadChannel(name, def);
+					_fetchNode(path, def);
 					return def.promise;
-				}
-			},
-			/**
-			 * this will create a channel from predefined array of method names
-			 * channel, it will return it's promise
-			 * @param {string} name
-			 * @param {Array<String>} methods must be provided
-			 * @returns {Object} which mirrors the exported object in the serverside script
-			 */
-			loadChannelSync: function(name, methods) {
-				if (serverChannels.hasOwnProperty(name)) {
-					return serverChannels[name];
-				} else {
-					var chnl = {rpcProps: {_loadDef: $q.defer()}};
-					serverChannels[name] = chnl;
-
-					connectToServerChannel(chnl, name);
-					registerRemoteFunctions({fnNames: methods, name: name});
-					return chnl;
 				}
 			},
 			/**
@@ -281,13 +179,6 @@ module.exports = function ($rootScope, $log, $q) {
 
 				return channel.deferred.promise;
 			},
-			/**
-			 * @param {String} name
-			 * @returns {Object} client channel
-			 */
-			getClientChannel: function(name) {
-				return clientChannels[name];
-			},
 			//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
 			onBatchStarts: nop, //called when invocation counter equals 1
 			onBatchEnd: nop,    //called when invocation counter equals endCounter
@@ -296,24 +187,77 @@ module.exports = function ($rootScope, $log, $q) {
 		};
 
 		baseURL = url;
-		rpcMaster = io.connect(url + '/rpc-master', handshake)
+		rpcMaster = io.connect(url + '/rpc', handshake)
 			.on('serverRunDate', function (runDate) {
 				serverRunDateDeferred.resolve(runDate);
 				$rootScope.$apply();
 			})
+			.on('node', function (data){
+				$log.info('node callback invoked with: ', data);
+				$log.info(serverNodes);
+
+				if (serverNodes[data.path]) {
+					var dfd = serverNodes[data.path];
+					traverse(data.tree).map(function (el){
+						if (this.isLeaf) {
+							this.update(function() {
+								invocationCounter++;
+								rpcMaster.emit('call',
+									{Id: invocationCounter, fnName: fnName, args: Array.prototype.slice.call(arguments, 0)}
+								);
+								if (invocationCounter == 1) {
+									rpc.onBatchStarts(invocationCounter);
+								}
+								rpc.onCall(invocationCounter);
+								deferreds[invocationCounter] = $q.defer();
+								return deferreds[invocationCounter].promise;
+							});
+						}
+					});
+					serverNodes[data.path] = data.tree;
+				}
+			})
 			.on('channelFns', function (data, storeInCache) {
 				var name = data.name;
-				var channel = serverChannels[name];
+				var channel = serverNodes[name];
 				connectToServerChannel(channel, name);
 				registerRemoteFunctions(data, storeInCache);
 			})
 			.on('channelDoesNotExist', function (data) {
 
-				var channel = serverChannels[data.name];
+				var channel = serverNodes[data.name];
 				channel.rpcProps._loadDef.reject();
 				$log.warn("no channel under name: " + data.name);
 				$rootScope.$apply();
 
+			})
+			.on('resolve', function (data) {
+				deferreds[data.Id].resolve(data.value);
+				callEnded(data.Id);
+			})
+			.on('reject', function (data) {
+				if (data && data.Id) {
+					deferreds[data.Id].reject(data.reason);
+					//$log.error("Call " + name + ':' + data.Id + " is rejected, reason ", data.reason);
+
+					callEnded(data.Id);
+				} else {
+					$log.error("Channel: " + name + "Reject response doesn't have id: ", data);
+				}
+			})
+			.on('connectFailed', function (reason) {
+				$log.error('unable to connect to namespace ' + name, reason);
+				rpcProps._loadDef.reject(reason);
+			})
+			.on('disconnect', function (data) {
+				reconDfd = $q.defer();
+				rpcProps._connected = false;
+				rpcProps._loadDef = reconDfd;
+				$log.warn("Server channel " + name + " disconnected.");
+			})
+			.on('reconnect', function () {
+				$log.info('reconnected rpc');
+				//todo fetch all nodes
 			})
 			.on('clientChannelCreated', function (name) {
 
