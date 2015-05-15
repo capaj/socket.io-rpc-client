@@ -24,10 +24,12 @@ module.exports = function ($rootScope, $log, $q) {
 		}
 		var invocationCounter = 0;
 		var endCounter = 0;
+		var serverPaths = {};
 		var clientChannels = {};
 		var deferreds = [];
 		var baseURL;
 		var rpcMaster;
+		var knownTemplates = {};
 		var serverNodes = {};
 		var serverRunDate;  // used for invalidating the cache
 		var serverRunDateDeferred = $q.defer();
@@ -78,7 +80,7 @@ module.exports = function ($rootScope, $log, $q) {
 			rpcMaster.emit('node', path);
 		};
 
-		var rpc = function prepareRemoteCall(fnPath) {
+		function prepareRemoteCall(fnPath) {
 			return function remoteCall() {
 				var dfd = $q.defer();
 				invocationCounter++;
@@ -91,8 +93,10 @@ module.exports = function ($rootScope, $log, $q) {
 				rpc.onCall(invocationCounter);
 				deferreds[invocationCounter] = dfd;
 				return dfd.promise;
-			}
-		};
+			};
+		}
+
+		var rpc = prepareRemoteCall;
 
 		/**
 		 * for a particular channel this will connect and prepare the channel for use, if called more than once for one
@@ -116,45 +120,45 @@ module.exports = function ($rootScope, $log, $q) {
 		 * @param {Object} toExpose object, a tree with functions as leaves
 		 * @returns {Promise} a promise confirming that server is connected and can call the client, throws an error if already exposed
 		 */
-		rpc.expose = function(name, toExpose) { //
-			if (clientChannels.hasOwnProperty(name)) {
-				throw new Error('Failed to expose channel, this client channel is already exposed');
-			}
-
-			var channel = {fns: toExpose, deferred: $q.defer(), rpcProps: {}};
-			clientChannels[name] = channel;
-
-			var fnNames = [];
-			for (var fn in toExpose) {
-				if (fn === '_socket') {
-					throw new Error('Failed to expose channel, _socket property is reserved for socket namespace');
+			rpc.expose = function(name, toExpose) { //
+				if (clientChannels.hasOwnProperty(name)) {
+					throw new Error('Failed to expose channel, this client channel is already exposed');
 				}
-				fnNames.push(fn);
-			}
-			var expose = function() {
-				rpcMaster.emit('exposeChannel', {name: name, fns: fnNames});
-			};
 
-			if (rpcMaster.connected) {
-				// when no on connect event will be fired, we just expose the channel immediately
-				expose();
-			}
+				var channel = {fns: toExpose, deferred: $q.defer(), rpcProps: {}};
+				clientChannels[name] = channel;
 
-			rpcMaster
-				.on('disconnect', function() {
-					channel.deferred = $q.defer();
-				})
-				.on('connect', expose)
-				.on('reexposeChannels', expose);	//not sure if this will be needed, since simulating socket.io
-			// reconnects is hard, leaving it here for now
+				var fnNames = [];
+				for (var fn in toExpose) {
+					if (fn === '_socket') {
+						throw new Error('Failed to expose channel, _socket property is reserved for socket namespace');
+					}
+					fnNames.push(fn);
+				}
+				var expose = function() {
+					rpcMaster.emit('exposeChannel', {name: name, fns: fnNames});
+				};
 
-			return channel.deferred.promise;
-		},
-		//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
-		rpc.onBatchStarts = nop, //called when invocation counter equals 1
-		rpc.onBatchEnd = nop,    //called when invocation counter equals endCounter
-		rpc.onCall = nop,        //called when invocation counter equals endCounter
-		rpc.onEnd = nop         //called when one call is returned
+				if (rpcMaster.connected) {
+					// when no on connect event will be fired, we just expose the channel immediately
+					expose();
+				}
+
+				rpcMaster
+					.on('disconnect', function() {
+						channel.deferred = $q.defer();
+					})
+					.on('connect', expose)
+					.on('reexposeChannels', expose);	//not sure if this will be needed, since simulating socket.io
+				// reconnects is hard, leaving it here for now
+
+				return channel.deferred.promise;
+			},
+			//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
+			rpc.onBatchStarts = nop, //called when invocation counter equals 1
+			rpc.onBatchEnd = nop,    //called when invocation counter equals endCounter
+			rpc.onCall = nop,        //called when invocation counter equals endCounter
+			rpc.onEnd = nop         //called when one call is returned
 
 
 		baseURL = url;
@@ -172,18 +176,7 @@ module.exports = function ($rootScope, $log, $q) {
 								path = data.path + '.' + path;
 							}
 
-							this.update(function remoteInvocation() {
-								invocationCounter++;
-								rpcMaster.emit('call',
-									{Id: invocationCounter, fnPath: path, args: Array.prototype.slice.call(arguments, 0)}
-								);
-								if (invocationCounter == 1) {
-									rpc.onBatchStarts(invocationCounter);
-								}
-								rpc.onCall(invocationCounter);
-								deferreds[invocationCounter] = $q.defer();
-								return deferreds[invocationCounter].promise;
-							});
+							this.update(prepareRemoteCall(path));
 						}
 					});
 					var promise = serverNodes[data.path];
@@ -199,7 +192,6 @@ module.exports = function ($rootScope, $log, $q) {
 				err.path = path;
 				promise.reject(err);
 			})
-
 			.on('resolve', function (data) {
 				deferreds[data.Id].resolve(data.value);
 				callEnded(data.Id);
@@ -211,12 +203,14 @@ module.exports = function ($rootScope, $log, $q) {
 
 					callEnded(data.Id);
 				} else {
-					$log.error("Channel: " + name + "Reject response doesn't have id: ", data);
+					throw new Error("Reject response doesn't have a deferred with a matching id: ", data);
 				}
 			})
-			.on('connectFailed', function (reason) {
-				$log.error('unable to connect to namespace ' + name, reason);
-				rpcProps._loadDef.reject(reason);
+			.on('connect_error', function (err) {
+				$log.error('unable to connect to server');
+				for (var nodePath in serverNodes) {
+					serverNodes[nodePath].reject(err)
+				}
 			})
 			.on('disconnect', function (data) {
 				reconDfd = $q.defer();
