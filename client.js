@@ -24,12 +24,10 @@ module.exports = function ($rootScope, $log, $q) {
 		}
 		var invocationCounter = 0;
 		var endCounter = 0;
-		var serverPaths = {};
 		var clientChannels = {};
 		var deferreds = [];
 		var baseURL;
 		var rpcMaster;
-		var knownTemplates = {};
 		var serverNodes = {};
 		var serverRunDate;  // used for invalidating the cache
 		var serverRunDateDeferred = $q.defer();
