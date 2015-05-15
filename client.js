@@ -69,122 +69,95 @@ module.exports = function ($rootScope, $log, $q) {
 			}
 		}
 
-
-		var registerRemoteFunctions = function (data, storeInCache) {
-			var channel = serverNodes[data.name];
-			var remoteMethodInvocation = function (fnName) {
-				channel[fnName] = function () {
-					invocationCounter++;
-					channel.rpcProps._socket.emit('call',
-						{Id: invocationCounter, fnPath: fnName, args: Array.prototype.slice.call(arguments, 0)}
-					);
-					if (invocationCounter == 1) {
-						rpc.onBatchStarts(invocationCounter);
-					}
-					rpc.onCall(invocationCounter);
-					deferreds[invocationCounter] = $q.defer();
-					return deferreds[invocationCounter].promise;
-				};
-			};
-
-			if (data.fnNames) {
-				if (data.tplId) {
-					//store the template
-					knownTemplates[data.tplId] = data.fnNames;
-				}
-				data.fnNames.forEach(remoteMethodInvocation);   //initialize from incoming data
-			} else {
-				knownTemplates[data.tplId].forEach(remoteMethodInvocation); //this has to be initialized from known template
-			}
-
-			var chnlProps = channel.rpcProps;
-			chnlProps._loadDef.resolve(channel);
-			chnlProps._connected = true;
-			chnlProps.disconnect = function() {
-				chnlProps._socket.disconnect();
-			};
-
-			if (storeInCache !== false) {
-				$rootScope.$apply();
-				data.cDate = new Date();    // here we make a note of when the channel cache was saved
-				cacheIt(getCacheKey(data.name), data)
-			}
-
-		};
-
 		/**
 		 * @param {String} path
 		 * @param {Object} def
 		 * @private
 		 */
 		var _fetchNode = function(path, def) {
+			$log.info('path being fetched', path);
 			serverNodes[path] = def;
 			rpcMaster.emit('node', path);
-
 		};
 
-		var rpc = {
-			/**
-			 * for a particular channel this will connect and prepare the channel for use, if called more than once for one
-			 * channel, it will return it's promise
-			 * @param {string} name
-			 * @returns {Promise}
-			 */
-			fetchNode: function (path) {
+		var rpc = function prepareRemoteCall(fnPath) {
+			return function remoteCall() {
+				var dfd = $q.defer();
+				invocationCounter++;
+				rpcMaster.emit('call',
+					{Id: invocationCounter, fnPath: fnPath, args: Array.prototype.slice.call(arguments, 0)}
+				);
+				if (invocationCounter == 1) {
+					rpc.onBatchStarts(invocationCounter);
+				}
+				rpc.onCall(invocationCounter);
+				deferreds[invocationCounter] = dfd;
+				return dfd.promise;
+			}
+		};
+
+		/**
+		 * for a particular channel this will connect and prepare the channel for use, if called more than once for one
+		 * channel, it will return it's promise
+		 * @param {string} name
+		 * @returns {Promise}
+		 */
+		rpc.fetchNode =
+			function(path) {
 				if (serverNodes.hasOwnProperty(path)) {
-					return serverNodes[path]._loadDef.promise;
+					return serverNodes[path].promise;
 				} else {
 					var def = $q.defer();
 					_fetchNode(path, def);
 					return def.promise;
 				}
 			},
-			/**
-			 * @param {string} name of the channel
-			 * @param {Object} toExpose object with functions as values
-			 * @returns {Promise} a promise confirming that server is connected and can call the client, throws an error if already exposed
-			 */
-			expose: function (name, toExpose) { //
-				if (clientChannels.hasOwnProperty(name)) {
-					throw new Error('Failed to expose channel, this client channel is already exposed');
+
+		/**
+		 * @param {string} name of the channel
+		 * @param {Object} toExpose object, a tree with functions as leaves
+		 * @returns {Promise} a promise confirming that server is connected and can call the client, throws an error if already exposed
+		 */
+		rpc.expose = function(name, toExpose) { //
+			if (clientChannels.hasOwnProperty(name)) {
+				throw new Error('Failed to expose channel, this client channel is already exposed');
+			}
+
+			var channel = {fns: toExpose, deferred: $q.defer(), rpcProps: {}};
+			clientChannels[name] = channel;
+
+			var fnNames = [];
+			for (var fn in toExpose) {
+				if (fn === '_socket') {
+					throw new Error('Failed to expose channel, _socket property is reserved for socket namespace');
 				}
+				fnNames.push(fn);
+			}
+			var expose = function() {
+				rpcMaster.emit('exposeChannel', {name: name, fns: fnNames});
+			};
 
-				var channel = {fns: toExpose, deferred: $q.defer(), rpcProps:{}};
-				clientChannels[name] = channel;
+			if (rpcMaster.connected) {
+				// when no on connect event will be fired, we just expose the channel immediately
+				expose();
+			}
 
-				var fnNames = [];
-				for(var fn in toExpose)
-				{
-					if (fn === '_socket') {
-						throw new Error('Failed to expose channel, _socket property is reserved for socket namespace');
-					}
-					fnNames.push(fn);
-				}
-				var expose = function() {
-					rpcMaster.emit('exposeChannel', {name: name, fns: fnNames});
-				};
+			rpcMaster
+				.on('disconnect', function() {
+					channel.deferred = $q.defer();
+				})
+				.on('connect', expose)
+				.on('reexposeChannels', expose);	//not sure if this will be needed, since simulating socket.io
+			// reconnects is hard, leaving it here for now
 
-				if (rpcMaster.connected) {
-					// when no on connect event will be fired, we just expose the channel immediately
-					expose();
-				}
+			return channel.deferred.promise;
+		},
+		//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
+		rpc.onBatchStarts = nop, //called when invocation counter equals 1
+		rpc.onBatchEnd = nop,    //called when invocation counter equals endCounter
+		rpc.onCall = nop,        //called when invocation counter equals endCounter
+		rpc.onEnd = nop         //called when one call is returned
 
-				rpcMaster
-					.on('disconnect', function () {
-						channel.deferred = $q.defer();
-					})
-					.on('connect', expose)
-					.on('reexposeChannels', expose);	//not sure if this will be needed, since simulating socket.io
-				// reconnects is hard, leaving it here for now
-
-				return channel.deferred.promise;
-			},
-			//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
-			onBatchStarts: nop, //called when invocation counter equals 1
-			onBatchEnd: nop,    //called when invocation counter equals endCounter
-			onCall: nop,        //called when invocation counter equals endCounter
-			onEnd: nop         //called when one call is returned
-		};
 
 		baseURL = url;
 		rpcMaster = io.connect(url + '/rpc', handshake)
@@ -193,17 +166,18 @@ module.exports = function ($rootScope, $log, $q) {
 				$rootScope.$apply();
 			})
 			.on('node', function (data){
-				$log.info('node callback invoked with: ', data);
-				$log.info(serverNodes);
-
 				if (serverNodes[data.path]) {
-					var dfd = serverNodes[data.path];
-					traverse(data.tree).map(function (el){
+					var remoteMethods = traverse(data.tree).map(function (el){
 						if (this.isLeaf) {
-							this.update(function() {
+							var path = this.path;
+							if (data.path) {
+								path = data.path + '.' + path;
+							}
+
+							this.update(function remoteInvocation() {
 								invocationCounter++;
 								rpcMaster.emit('call',
-									{Id: invocationCounter, fnName: fnName, args: Array.prototype.slice.call(arguments, 0)}
+									{Id: invocationCounter, fnPath: path, args: Array.prototype.slice.call(arguments, 0)}
 								);
 								if (invocationCounter == 1) {
 									rpc.onBatchStarts(invocationCounter);
@@ -214,23 +188,20 @@ module.exports = function ($rootScope, $log, $q) {
 							});
 						}
 					});
-					serverNodes[data.path] = data.tree;
+					var promise = serverNodes[data.path];
+					serverNodes[data.path] = remoteMethods;
+					promise.resolve(remoteMethods);
+				} else {
+					throw new Error("server sent a node which was not requested");
 				}
 			})
-			.on('channelFns', function (data, storeInCache) {
-				var name = data.name;
-				var channel = serverNodes[name];
-				connectToServerChannel(channel, name);
-				registerRemoteFunctions(data, storeInCache);
+			.on('noSuchNode', function (path) {
+				var promise = serverNodes[path];
+				var err = new Error('Node is not defined on the backend');
+				err.path = path;
+				promise.reject(err);
 			})
-			.on('channelDoesNotExist', function (data) {
 
-				var channel = serverNodes[data.name];
-				channel.rpcProps._loadDef.reject();
-				$log.warn("no channel under name: " + data.name);
-				$rootScope.$apply();
-
-			})
 			.on('resolve', function (data) {
 				deferreds[data.Id].resolve(data.value);
 				callEnded(data.Id);
