@@ -10,11 +10,15 @@ Angular.js lib contains special rpc-controller directive, which when compiled as
 
 then in Node.js:
 ```javascript
-var backend = rpcClient('http://localhost:8031');
+var rpcClient = require('socket.io-rpc-client');
+var rpc = rpcClient('http://localhost:8031');
 
-backend.loadChannel('./rpc_channel_test').then(function(chnl){
-    //chnl contains your remote methods
-})
+rpc('plain')().then(function() {
+			throw new Error('This should not have resolved');
+		}, function(err) {
+			err.message.should.match(/server (.*) disconnected before returning, call rejected/);
+			done();
+		});
 ```
 
 in the browser:

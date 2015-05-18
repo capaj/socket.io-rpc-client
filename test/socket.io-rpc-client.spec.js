@@ -84,7 +84,7 @@ describe("simple tree of remote methods", function(){
 			done();
 		});
 		setTimeout(function(){
-			rpc.call('fnOnClient')().then(function() {
+			rpc('fnOnClient')().then(function() {
 				throw new Error('This should not have resolved');
 			}, function(err) {
 				err.message.should.match(/server (.*) disconnected, call rejected/);
