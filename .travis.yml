@@ -1,0 +1,13 @@
+language: node_js
+node_js:
+- '0.12'
+- 'iojs'
+before_install:
+  -  npm install --ignore-scripts
+deploy:
+  provider: npm
+  email: capajj@gmail.com
+  on:
+    tags: true
+    repo: capaj/socket.io-rpc-client
+    all_branches: true

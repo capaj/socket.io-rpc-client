@@ -1,9 +1,12 @@
-module.exports = function ($rootScope, $log, $q) {
-	var nop = function(){};
+require('error-tojson');
+
+module.exports = function($rootScope, $log, $q) {
+	var nop = function() {};
 	var io = require('socket.io-client');
 	var traverse = require('traverse');
 
 	var backends = {};
+
 	/**
 	 * pseudo constructor, connects to remote server which exposes RPC calls, if trying to connect to a backend, which
 	 * already exists, then existing instance is returned
@@ -24,18 +27,17 @@ module.exports = function ($rootScope, $log, $q) {
 		}
 		var invocationCounter = 0;
 		var endCounter = 0;
-		var clientChannels = {};
 		var deferreds = [];
-		var baseURL;
-		var rpcMaster;
-		var serverNodes = {};
+		var connected = false;
+		var socket;
+		var remoteNodes = {};
 		var serverRunDate;  // used for invalidating the cache
 		var serverRunDateDeferred = $q.defer();
-		serverRunDateDeferred.promise.then(function (date) {
+		serverRunDateDeferred.promise.then(function(date) {
 			serverRunDate = new Date(date);
 		});
 
-		var callEnded = function (Id) {
+		var remoteCallEnded = function(Id) {
 			if (deferreds[Id]) {
 				delete deferreds[Id];
 				endCounter++;
@@ -45,27 +47,10 @@ module.exports = function ($rootScope, $log, $q) {
 					invocationCounter = 0;
 					endCounter = 0;
 				}
-			}else {
+			} else {
 				$log.warn("Deferred Id " + Id + " was resolved/rejected more than once, this should not occur.");
 			}
 		};
-
-		/**
-		 * Generates a 'safe' key for storing cache in client's local storage
-		 * @param name
-		 * @returns {string}
-		 */
-		function getCacheKey(name) {
-			return 'SIORPC:' + baseURL + '/' + name;
-		}
-
-		function cacheIt(key, data) {
-			try{
-				localStorage[key] = JSON.stringify(data);
-			}catch(e){
-				$log.warn("Error raised when writing to local storage: " + e); // probably quota exceeded
-			}
-		}
 
 		/**
 		 * @param {String} path
@@ -74,15 +59,19 @@ module.exports = function ($rootScope, $log, $q) {
 		 */
 		var _fetchNode = function(path, def) {
 			$log.info('path being fetched', path);
-			serverNodes[path] = def;
-			rpcMaster.emit('node', path);
+			remoteNodes[path] = def;
+			socket.emit('fetchNode', path);
 		};
 
 		function prepareRemoteCall(fnPath) {
 			return function remoteCall() {
 				var dfd = $q.defer();
+				if (!connected) {
+					dfd.reject(new Error('server disconnected, call rejected'));
+					return dfd.promise;
+				}
 				invocationCounter++;
-				rpcMaster.emit('call',
+				socket.emit('call',
 					{Id: invocationCounter, fnPath: fnPath, args: Array.prototype.slice.call(arguments, 0)}
 				);
 				if (invocationCounter == 1) {
@@ -97,77 +86,65 @@ module.exports = function ($rootScope, $log, $q) {
 		var rpc = prepareRemoteCall;
 
 		/**
-		 * for a particular channel this will connect and prepare the channel for use, if called more than once for one
-		 * channel, it will return it's promise
-		 * @param {string} name
+		 * this will connect and return a copy of a remote rpc function tree, if called more than once for one
+		 * path, it will not call again and rather return cached promise
+		 * @param {string} path
 		 * @returns {Promise}
 		 */
-		rpc.fetchNode =
-			function(path) {
-				if (serverNodes.hasOwnProperty(path)) {
-					return serverNodes[path].promise;
-				} else {
-					var def = $q.defer();
-					_fetchNode(path, def);
-					return def.promise;
-				}
-			},
+		rpc.fetchNode =	function(path) {
+			if (remoteNodes.hasOwnProperty(path)) {
+				return remoteNodes[path].promise;
+			} else {
+				var def = $q.defer();
+				_fetchNode(path, def);
+				return def.promise;
+			}
+		};
 
 		/**
-		 * @param {string} name of the channel
-		 * @param {Object} toExpose object, a tree with functions as leaves
-		 * @returns {Promise} a promise confirming that server is connected and can call the client, throws an error if already exposed
+		 * @type {Object} fnTree object, a tree with functions as leaves
 		 */
-			rpc.expose = function(name, toExpose) { //
-				if (clientChannels.hasOwnProperty(name)) {
-					throw new Error('Failed to expose channel, this client channel is already exposed');
-				}
-
-				var channel = {fns: toExpose, deferred: $q.defer(), rpcProps: {}};
-				clientChannels[name] = channel;
-
-				var fnNames = [];
-				for (var fn in toExpose) {
-					if (fn === '_socket') {
-						throw new Error('Failed to expose channel, _socket property is reserved for socket namespace');
-					}
-					fnNames.push(fn);
-				}
-				var expose = function() {
-					rpcMaster.emit('exposeChannel', {name: name, fns: fnNames});
-				};
-
-				if (rpcMaster.connected) {
-					// when no on connect event will be fired, we just expose the channel immediately
-					expose();
-				}
-
-				rpcMaster
-					.on('disconnect', function() {
-						channel.deferred = $q.defer();
-					})
-					.on('connect', expose)
-					.on('reexposeChannels', expose);	//not sure if this will be needed, since simulating socket.io
-				// reconnects is hard, leaving it here for now
-
-				return channel.deferred.promise;
-			},
-			//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
-			rpc.onBatchStarts = nop, //called when invocation counter equals 1
-			rpc.onBatchEnd = nop,    //called when invocation counter equals endCounter
-			rpc.onCall = nop,        //called when invocation counter equals endCounter
-			rpc.onEnd = nop         //called when one call is returned
+		rpc.tree = {};
+		//These are internal callbacks of socket.io-rpc, use them if you want to implement something like a global loader indicator
+		rpc.onBatchStarts = nop; //called when invocation counter equals 1
+		rpc.onBatchEnd = nop;    //called when invocation counter equals endCounter
+		rpc.onCall = nop;        //called when invocation counter equals endCounter
+		rpc.onEnd = nop;         //called when one call is returned
 
 
-		baseURL = url;
-		rpcMaster = io.connect(url + '/rpc', handshake)
-			.on('serverRunDate', function (runDate) {
+		socket = io.connect(url + '/rpc', handshake)
+			.on('serverRunDate', function(runDate) {
 				serverRunDateDeferred.resolve(runDate);
 				$rootScope.$apply();
 			})
-			.on('node', function (data){
-				if (serverNodes[data.path]) {
-					var remoteMethods = traverse(data.tree).map(function (el){
+			.on('connect', function() {
+				connected = true;
+			})
+			.on('fetchNode', function(path) {
+				var methods = rpc.tree;
+				if (path) {
+					methods = traverse(rpc.tree).get(path.split('.'));
+				}
+
+				if (!methods) {
+					socket.emit('noSuchNode', path);
+					$log.error('client requested node ' + path + ' which was not found');
+					return;
+				}
+				var localFnTree = traverse(methods).map(function(el) {
+					if (this.isLeaf) {
+						return null;
+					} else {
+						return el;
+					}
+				});
+
+				socket.emit('node', {path: path, tree: localFnTree});
+				$log.log('client requested node ' + path + 'which was sent as: ', localFnTree);
+			})
+			.on('node', function(data) {
+				if (remoteNodes[data.path]) {
+					var remoteMethods = traverse(data.tree).map(function(el) {
 						if (this.isLeaf) {
 							var path = this.path;
 							if (data.path) {
@@ -177,86 +154,93 @@ module.exports = function ($rootScope, $log, $q) {
 							this.update(prepareRemoteCall(path));
 						}
 					});
-					var promise = serverNodes[data.path];
-					serverNodes[data.path] = remoteMethods;
+					var promise = remoteNodes[data.path];
+					remoteNodes[data.path] = remoteMethods;
 					promise.resolve(remoteMethods);
 				} else {
 					throw new Error("server sent a node which was not requested");
 				}
 			})
-			.on('noSuchNode', function (path) {
-				var promise = serverNodes[path];
+			.on('noSuchNode', function(path) {
+				var promise = remoteNodes[path];
 				var err = new Error('Node is not defined on the backend');
 				err.path = path;
 				promise.reject(err);
 			})
-			.on('resolve', function (data) {
+			.on('resolve', function(data) {
 				deferreds[data.Id].resolve(data.value);
-				callEnded(data.Id);
+				remoteCallEnded(data.Id);
 			})
-			.on('reject', function (data) {
+			.on('reject', function(data) {
 				if (data && data.Id) {
 					deferreds[data.Id].reject(data.reason);
 					//$log.error("Call " + name + ':' + data.Id + " is rejected, reason ", data.reason);
 
-					callEnded(data.Id);
+					remoteCallEnded(data.Id);
 				} else {
 					throw new Error("Reject response doesn't have a deferred with a matching id: ", data);
 				}
 			})
-			.on('connect_error', function (err) {
+			.on('connect_error', function(err) {
 				$log.error('unable to connect to server');
-				for (var nodePath in serverNodes) {
-					serverNodes[nodePath].reject(err)
+				for (var nodePath in remoteNodes) {
+					remoteNodes[nodePath].reject(err)
 				}
 			})
-			.on('disconnect', function (data) {
-				reconDfd = $q.defer();
-				rpcProps._connected = false;
-				rpcProps._loadDef = reconDfd;
-				$log.warn("Server channel " + name + " disconnected.");
+			.on('disconnect', function() {
+				connected = false;
+				deferreds.forEach(function (dfd, id){
+					dfd.reject(new Error('client ' + socket.id + ' disconnected before returning, call rejected'));
+					remoteCallEnded(id);
+				});
+				$log.warn("RPC server " + url + " disconnected.");
 			})
-			.on('reconnect', function () {
+			.on('reconnect', function() {
 				$log.info('reconnected rpc');
 				//todo fetch all nodes
 			})
-			.on('clientChannelCreated', function (name) {
+			.on('call', function(data) {
+				try {
+					var method = traverse(rpc.tree).get(data.fnPath.split('.'));
+				} catch (err) {
+					debug('error when resolving an invocation', err);
+				}
+				if (!Number.isInteger(data.id)) {
+					socket.emit('rpcError', {
+						reason: new TypeError('id is a required property for a call, instead: ', data.id)
+							.toJSON()
+					});
+				}
+				if (method && typeof method.apply) {
 
-				var channel = clientChannels[name];
-				var socket = io.connect(baseURL + '/rpcC-' + name + '/' + rpcMaster.io.engine.id);  //rpcC stands for rpc Client
-				channel.rpcProps._socket = socket;
-				socket.on('call', function (data) {
-					var exposed = channel.fns;
-					if (exposed.hasOwnProperty(data.fnName) && typeof exposed[data.fnName] === 'function') {
-
-						var retVal = exposed[data.fnName].apply(this, data.args);
-						if (typeof retVal === 'object' && typeof retVal.then === 'function') {
-							//async - promise must be returned in order to be treated as async
-							retVal.then(function (asyncRetVal) {
-								socket.emit('resolve', { Id: data.Id, value: asyncRetVal });
-							}, function (error) {
-								if (error instanceof Error) {
-									error = error.toString();
-								}
-								socket.emit('reject', { Id: data.Id, reason: error });
-							});
-						} else {
-							//synchronous
-							if (retVal instanceof Error) {
-								socket.emit('reject', { Id: data.Id, reason: retVal.toString() });
-							} else {
-								socket.emit('resolve', { Id: data.Id, value: retVal });
+					var retVal = method.apply(this, data.args);
+					if (typeof retVal === 'object' && typeof retVal.then === 'function') {
+						//async - promise must be returned in order to be treated as async
+						retVal.then(function(asyncRetVal) {
+							socket.emit('resolve', {Id: data.Id, value: asyncRetVal});
+						}, function(error) {
+							if (error instanceof Error) {
+								error = error.toJSON();
 							}
-						}
-
+							socket.emit('reject', {Id: data.Id, reason: error});
+						});
 					} else {
-						socket.emit('reject', {Id: data.Id, reason: 'no such function has been exposed: ' + data.fnName });
+						//synchronous
+						if (retVal instanceof Error) {
+							socket.emit('reject', {Id: data.Id, reason: retVal.toString()});
+						} else {
+							socket.emit('resolve', {Id: data.Id, value: retVal});
+						}
 					}
-				});
-				channel.deferred.resolve(channel);
 
+				} else {
+					socket.emit('reject', {
+						Id: data.Id,
+						reason: 'no such function has been exposed: ' + data.fnName
+					});
+				}
 			});
-		rpc.masterChannel = rpcMaster;
+		rpc.masterChannel = socket;
 
 		if (!RPCBackend.defaultBackend) {
 			RPCBackend.defaultBackend = rpc;   //the first rpc connection is the default, if you want, you can set some other
