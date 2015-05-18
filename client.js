@@ -203,7 +203,7 @@ module.exports = function($rootScope, $log, $q) {
 				try {
 					var method = traverse(rpc.tree).get(data.fnPath.split('.'));
 				} catch (err) {
-					debug('error when resolving an invocation', err);
+					$log.error('error when resolving an invocation', err);
 				}
 				if (!Number.isInteger(data.id)) {
 					socket.emit('rpcError', {
