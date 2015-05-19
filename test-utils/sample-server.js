@@ -1,9 +1,9 @@
-var RPC = require('../main.js');
+var RPC = require('socket.io-rpc');
 var express = require('express');
 var port = 8031;
 
 var rpcApp = new RPC(port, {
-	test: require('./rpc_channel_test'),
+	test: require('./remote_methods'),
 	plain: function(){
 		return 41;
 	}

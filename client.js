@@ -1,6 +1,6 @@
 require('error-tojson');
 
-module.exports = function($rootScope, $log, $q) {
+module.exports = function($log, $q) {
 	var nop = function() {};
 	var io = require('socket.io-client');
 	var traverse = require('traverse');
@@ -15,6 +15,7 @@ module.exports = function($rootScope, $log, $q) {
 	 * returns {Socket} master socket namespace which you can use for looking under the hood
 	 */
 	function RPCBackend(url, handshake) {
+		var assign = require('lodash.assign');
 		if (!url) {
 			if (typeof location === 'object') {
 				url = '//' + location.host;	//we run in the browser
@@ -31,11 +32,6 @@ module.exports = function($rootScope, $log, $q) {
 		var connected = false;
 		var socket;
 		var remoteNodes = {};
-		var serverRunDate;  // used for invalidating the cache
-		var serverRunDateDeferred = $q.defer();
-		serverRunDateDeferred.promise.then(function(date) {
-			serverRunDate = new Date(date);
-		});
 
 		var remoteCallEnded = function(Id) {
 			if (deferreds[Id]) {
@@ -102,6 +98,13 @@ module.exports = function($rootScope, $log, $q) {
 		};
 
 		/**
+		 * @param {Object} toExtendWith
+		 */
+		rpc.expose = function(toExtendWith) {
+			assign(rpc.tree, toExtendWith);
+		};
+
+		/**
 		 * @type {Object} fnTree object, a tree with functions as leaves
 		 */
 		rpc.tree = {};
@@ -110,14 +113,11 @@ module.exports = function($rootScope, $log, $q) {
 		rpc.onBatchEnd = nop;    //called when invocation counter equals endCounter
 		rpc.onCall = nop;        //called when invocation counter equals endCounter
 		rpc.onEnd = nop;         //called when one call is returned
-
+		var socketId;
 
 		socket = io.connect(url + '/rpc', handshake)
-			.on('serverRunDate', function(runDate) {
-				serverRunDateDeferred.resolve(runDate);
-				$rootScope.$apply();
-			})
 			.on('connect', function() {
+				socketId = socket.io.engine.id;
 				connected = true;
 			})
 			.on('fetchNode', function(path) {
@@ -190,7 +190,7 @@ module.exports = function($rootScope, $log, $q) {
 			.on('disconnect', function() {
 				connected = false;
 				deferreds.forEach(function (dfd, id){
-					dfd.reject(new Error('client ' + socket.id + ' disconnected before returning, call rejected'));
+					dfd.reject(new Error('server ' + url + ' disconnected before returning, call rejected'));
 					remoteCallEnded(id);
 				});
 				$log.warn("RPC server " + url + " disconnected.");

@@ -1,5 +1,5 @@
 require('chai').should();
-var rpcClient = require('socket.io-rpc-client');
+var rpcClient = require('../socket.io-rpc-client-node');
 var cp = require('child_process');
 var Promise = require('bluebird');
 var server = cp.fork('./test-utils/sample-server.js');

@@ -13,11 +13,8 @@ then in Node.js:
 var rpcClient = require('socket.io-rpc-client');
 var rpc = rpcClient('http://localhost:8031');
 
-rpc('plain')().then(function() {
-			throw new Error('This should not have resolved');
-		}, function(err) {
-			err.message.should.match(/server (.*) disconnected before returning, call rejected/);
-			done();
+rpc('plain')().then(function(ret) {
+			console.log('plain returned ', ret);
 		});
 ```
 
