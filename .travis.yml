@@ -4,10 +4,10 @@ node_js:
 - 'iojs'
 before_install:
   -  npm install --ignore-scripts
-deploy:
-  provider: npm
-  email: capajj@gmail.com
-  on:
-    tags: true
-    repo: capaj/socket.io-rpc-client
-    all_branches: true
+#deploy:
+#  provider: npm
+#  email: capajj@gmail.com
+#  on:
+#    tags: true
+#    repo: capaj/socket.io-rpc-client
+#    all_branches: true
