@@ -14,8 +14,8 @@ var rpcClient = require('socket.io-rpc-client');
 var rpc = rpcClient('http://localhost:8031');
 
 rpc('plain')().then(function(ret) {
-			console.log('plain returned ', ret);
-		});
+	console.log('plain returned ', ret);	//for test-utils/sample-server.js server prints out: plain returned 41 
+});
 ```
 
 in the browser:

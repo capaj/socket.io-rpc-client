@@ -29,7 +29,7 @@ module.exports = function($log, $q) {
 		var invocationCounter = 0;
 		var endCounter = 0;
 		var deferreds = [];
-		var connected = false;
+		var connected = true;	//so we assume that we are connected from the beginning, so that we can start to call remote immediatelly
 		var socket;
 		var remoteNodes = {};
 
