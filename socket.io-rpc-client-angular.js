@@ -2,7 +2,7 @@ var angular = require('angular');
 /**
  * factory which returns a connect function
  */
-angular.module('RPC', []).factory('$RPC', ['$rootScope', '$log', '$q', require('./client')])
+angular.module('RPC', []).factory('$RPC', ['$log', '$q', require('./client')])
 /**
  * @ngdoc directive
  * @name RPC.directive:rpcController
