@@ -1,4 +1,4 @@
-# socket.io-rpc-client
+# socket.io-rpc-client [![Build Status](https://travis-ci.org/capaj/socket.io-rpc-client.svg?tag=1.0.3)](https://travis-ci.org/capaj/socket.io-rpc-client)
 client library for a [socket.io-rpc](https://github.com/capaj/socket.io-rpc)
 
 All libraries are written in commonJS module style, so you need to use SystemJS loader to be able to use them in the browser. Browserify/webpack might work, if you set it up correctly, but might be a pain and you're probably will have to delve deep into the code.
