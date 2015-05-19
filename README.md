@@ -31,7 +31,4 @@ myChannel.getTime().then(t => { //calls getTime function on the server
 });    
 ```
 
-For complete examples refer to [socket.io-rpc project](https://github.com/capaj/socket.io-rpc)
-
-#Tests
-so far only few test scenarios are implemented, fee free to add some.
+For complete examples including server side refer to [socket.io-rpc project](https://github.com/capaj/socket.io-rpc)
