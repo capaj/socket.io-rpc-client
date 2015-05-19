@@ -124,11 +124,13 @@ module.exports = function($log, $q) {
 				var methods = rpc.tree;
 				if (path) {
 					methods = traverse(rpc.tree).get(path.split('.'));
+				} else {
+					methods = rpc.tree;
 				}
 
 				if (!methods) {
 					socket.emit('noSuchNode', path);
-					$log.error('client requested node ' + path + ' which was not found');
+					$log.error('client requested node "' + path + '" which was not found');
 					return;
 				}
 				var localFnTree = traverse(methods).map(function(el) {
@@ -139,8 +141,8 @@ module.exports = function($log, $q) {
 					}
 				});
 
+				$log.log('client requested node "' + path + '" which was sent as: ', localFnTree);
 				socket.emit('node', {path: path, tree: localFnTree});
-				$log.log('client requested node ' + path + 'which was sent as: ', localFnTree);
 			})
 			.on('node', function(data) {
 				if (remoteNodes[data.path]) {
@@ -212,8 +214,13 @@ module.exports = function($log, $q) {
 					});
 				}
 				if (method && typeof method.apply) {
-
-					var retVal = method.apply(this, data.args);
+					var retVal;
+					try{
+						retVal = method.apply(this, data.args);
+					}catch(err){
+						socket.emit('reject', {Id: data.Id, reason: err.toJSON()});
+						return;
+					}
 					if (typeof retVal === 'object' && typeof retVal.then === 'function') {
 						//async - promise must be returned in order to be treated as async
 						retVal.then(function(asyncRetVal) {
