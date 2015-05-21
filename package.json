@@ -1,6 +1,6 @@
 {
   "name": "socket.io-rpc-client",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "client for socket.io-rpc compatible with node/browser/angular",
   "main": "socket.io-rpc-client-node.js",
   "scripts": {
@@ -29,7 +29,7 @@
     "express": "~4",
     "mocha": "^2.2.5",
     "morgan": "^1.5.3",
-    "socket.io-rpc": "^0.9.2"
+    "socket.io-rpc": "^0.9.3"
   },
   "jspm": {
     "main": "socket.io-rpc-client.js",

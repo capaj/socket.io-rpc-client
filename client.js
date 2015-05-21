@@ -221,8 +221,8 @@ module.exports = function($log, $q) {
 						socket.emit('reject', {Id: data.Id, reason: err.toJSON()});
 						return;
 					}
-					if (typeof retVal === 'object' && typeof retVal.then === 'function') {
-						//async - promise must be returned in order to be treated as async
+					if (retVal instanceof Promise) {
+						//async
 						retVal.then(function(asyncRetVal) {
 							socket.emit('resolve', {Id: data.Id, value: asyncRetVal});
 						}, function(error) {
