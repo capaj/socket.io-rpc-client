@@ -11,16 +11,36 @@ Angular.js lib contains special rpc-controller directive, which when compiled as
 then in Node.js:
 ```javascript
 var rpcClient = require('socket.io-rpc-client');
-var rpc = rpcClient('http://localhost:8031');
 
+var rpc = rpcClient('http://localhost:8032');
+//call to the server
 rpc('plain')().then(function(ret) {
 	console.log('plain returned ', ret);	//for test-utils/sample-server.js server prints out: plain returned 41 
 });
+//expose some for the server to call
+rpc.expose({
+	fnOnClient: function() {
+		console.log('called client method');
+		return 42;
+	},
+	asyncOnClient: function() {
+		return new Promise(function(resolve, reject) {
+			setTimeout(function(){
+				resolve('resolved after 40ms');
+			}, 40);
+		});
+	},
+	erroringMethod: function() {
+		notdefined.error.will.propagate;
+	}
+});
+
 ```
 
 in the browser:
 ```javascript
-var myChannel = require('rpc/myChannel');   //CJS style require
+var myChannel = require('rpc/test');   //CJS style require
+//or
 import {default as myChannel} from 'rpc/myChannel'; //ES6 style require
 
 myChannel.getTime().then(t => { //calls getTime function on the server
