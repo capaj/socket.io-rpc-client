@@ -174,10 +174,10 @@ module.exports = function($log, $q) {
 				remoteCallEnded(data.Id);
 			})
 			.on('reject', function(data) {
-				if (data && data.Id) {
-					deferreds[data.Id].reject(data.reason);
-					//$log.error("Call " + name + ':' + data.Id + " is rejected, reason ", data.reason);
-
+				if (data && typeof data.Id === 'number') {
+					var err = new Error();
+					assign(err, data.reason);
+					deferreds[data.Id].reject(err);
 					remoteCallEnded(data.Id);
 				} else {
 					throw new Error("Reject response doesn't have a deferred with a matching id: ", data);
@@ -202,16 +202,16 @@ module.exports = function($log, $q) {
 				//todo fetch all nodes
 			})
 			.on('call', function(data) {
-				try {
-					var method = traverse(rpc.tree).get(data.fnPath.split('.'));
-				} catch (err) {
-					$log.error('error when resolving an invocation', err);
-				}
-				if (!Number.isInteger(data.id)) {
+				if (!data && typeof data.Id === 'number') {
 					socket.emit('rpcError', {
 						reason: new TypeError('id is a required property for a call, instead: ', data.id)
 							.toJSON()
 					});
+				}
+				try {
+					var method = traverse(rpc.tree).get(data.fnPath.split('.'));
+				} catch (err) {
+					$log.error('error when resolving an invocation', err);
 				}
 				if (method && typeof method.apply) {
 					var retVal;
