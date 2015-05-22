@@ -203,47 +203,54 @@ module.exports = function($log, $q) {
 			})
 			.on('call', function(data) {
 				if (!data && typeof data.Id === 'number') {
-					socket.emit('rpcError', {
+					return socket.emit('rpcError', {
 						reason: new TypeError('id is a required property for a call, instead: ', data.id)
 							.toJSON()
 					});
 				}
+				var emitRes = function(type, resData) {
+					resData.Id = data.Id;
+					socket.emit(type, resData)
+				};
 				try {
 					var method = traverse(rpc.tree).get(data.fnPath.split('.'));
 				} catch (err) {
 					$log.error('error when resolving an invocation', err);
+					return emitRes('reject', {reason: err.toJSON()});
 				}
 				if (method && typeof method.apply) {
 					var retVal;
 					try{
 						retVal = method.apply(this, data.args);
 					}catch(err){
-						socket.emit('reject', {Id: data.Id, reason: err.toJSON()});
+						emitRes('reject', {reason: err.toJSON()});
 						return;
 					}
 					if (retVal instanceof Promise) {
 						//async
 						retVal.then(function(asyncRetVal) {
-							socket.emit('resolve', {Id: data.Id, value: asyncRetVal});
+							emitRes('resolve', {value: asyncRetVal});
 						}, function(error) {
 							if (error instanceof Error) {
 								error = error.toJSON();
 							}
-							socket.emit('reject', {Id: data.Id, reason: error});
+							emitRes('reject', {reason: error});
 						});
 					} else {
 						//synchronous
 						if (retVal instanceof Error) {
-							socket.emit('reject', {Id: data.Id, reason: retVal.toString()});
+							emitRes('reject', {reason: retVal.toString()});
 						} else {
-							socket.emit('resolve', {Id: data.Id, value: retVal});
+							emitRes('resolve', {value: retVal});
 						}
 					}
 
 				} else {
+					var msg = 'function is not exposed: ' + data.fnPath;
+					$log.error(msg);
 					socket.emit('reject', {
 						Id: data.Id,
-						reason: 'no such function has been exposed: ' + data.fnName
+						reason: new Error(msg).toJSON()
 					});
 				}
 			});
