@@ -54,7 +54,6 @@ module.exports = function($log, $q) {
 		 * @private
 		 */
 		var _fetchNode = function(path, def) {
-			$log.info('path being fetched', path);
 			remoteNodes[path] = def;
 			socket.emit('fetchNode', path);
 		};
@@ -199,7 +198,6 @@ module.exports = function($log, $q) {
 			})
 			.on('reconnect', function() {
 				$log.info('reconnected rpc');
-				//todo fetch all nodes
 			})
 			.on('call', function(data) {
 				if (!data && typeof data.Id === 'number') {
