@@ -66,6 +66,17 @@ describe("simple tree of remote methods", function(){
 
 	});
 
+	it('should properly call and return when fetches a root node and calls a function there', function(){
+		return rpc.fetchNode('')
+			.then(function(remoteMethods) {
+				return remoteMethods.plain().then(function (ret){
+					ret.should.equal(41);
+				});
+			}, function(err) {
+				throw err;
+			});
+	});
+
 	it('should reject when remote function doesn\'t exist', function() {
 		return rpc('weDidNotDefineIt')().then(function() {
 			throw new Error('This should not have resolved');
@@ -92,6 +103,4 @@ describe("simple tree of remote methods", function(){
 			});
 		}, 100);
 	});
-
-
 });

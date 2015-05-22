@@ -148,7 +148,7 @@ module.exports = function($log, $q) {
 				if (remoteNodes[data.path]) {
 					var remoteMethods = traverse(data.tree).map(function(el) {
 						if (this.isLeaf) {
-							var path = this.path;
+							var path = this.path.join('.');
 							if (data.path) {
 								path = data.path + '.' + path;
 							}
