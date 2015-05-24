@@ -1,6 +1,0 @@
-var Promise = require('bluebird');
-
-var clientInjectableFn = require('./client');
-
-//we are faking angular's injection process and from the function, our client is returned asme way s when Angular instantiates it
-module.exports = clientInjectableFn(console, Promise);
