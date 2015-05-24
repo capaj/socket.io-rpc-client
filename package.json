@@ -29,7 +29,7 @@
     "express": "~4",
     "mocha": "^2.2.5",
     "morgan": "^1.5.3",
-    "socket.io-rpc": "^0.9.4"
+    "socket.io-rpc": "^0.9.6"
   },
   "jspm": {
     "dependencies": {
