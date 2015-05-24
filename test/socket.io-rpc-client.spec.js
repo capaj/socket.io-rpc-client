@@ -1,7 +1,6 @@
 require('chai').should();
 var rpcClient = require('../client');
 var cp = require('child_process');
-var Promise = require('bluebird');
 var server = cp.fork('./test-utils/sample-server.js');
 var rpc = rpcClient('http://localhost:8031');
 
