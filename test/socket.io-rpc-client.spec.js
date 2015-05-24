@@ -42,7 +42,7 @@ describe("simple tree of remote methods", function(){
 		return rpc.fetchNode('weDidNotDefineIt').then(function() {
 			throw new Error('This should not have resolved');
 		}, function(err) {
-			err.message.should.equal('Node is not defined on the backend');
+			err.message.should.match(/Node is not defined on the socket (.*)/);
 			err.path.should.equal('weDidNotDefineIt');
 		})
 	});
@@ -91,14 +91,13 @@ describe("simple tree of remote methods", function(){
 		rpc('plain')().then(function() {
 			throw new Error('This should not have resolved');
 		}, function(err) {
-			err.message.should.match(/server (.*) disconnected before returning, call rejected/);
-			done();
+			err.message.should.match(/socket (.*) disconnected before returning, call rejected/);
 		});
 		setTimeout(function(){
 			rpc('fnOnClient')().then(function() {
 				throw new Error('This should not have resolved');
 			}, function(err) {
-				err.message.should.match(/server (.*) disconnected, call rejected/);
+				err.message.should.match(/socket (.*) disconnected, call rejected/);
 				done();
 			});
 		}, 100);

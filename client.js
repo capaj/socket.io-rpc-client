@@ -24,7 +24,7 @@ module.exports = function RPCBackend(url, handshake) {
 	}
 
 	var socket = io.connect(url + '/rpc', handshake);
-	socketHandlers(socket, {}, socket.io.engine.id);
+	socketHandlers(socket, {});
 	var rpc = socket.rpc;
 	rpc.socket = socket;
 
