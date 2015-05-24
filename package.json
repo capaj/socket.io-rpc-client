@@ -1,6 +1,6 @@
 {
   "name": "socket.io-rpc-client",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "client for socket.io-rpc compatible with node/browser/angular",
   "main": "client.js",
   "scripts": {
@@ -17,7 +17,6 @@
     "rpc"
   ],
   "dependencies": {
-    "bluebird": "^2",
     "debug": "^2.2.0",
     "dom-storage": "^2.0.1",
     "error-tojson": "0.0.1",
@@ -41,6 +40,9 @@
       "traverse": "npm:traverse@^0.6.6",
       "debug": "npm:debug@^2.2.0"
     }
+  },
+  "engines": {
+	"node": "^0.12.0"
   },
   "author": "capajj@gmail.com",
   "license": "MIT",

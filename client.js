@@ -24,8 +24,15 @@ module.exports = function RPCBackend(url, handshake) {
 	}
 
 	var socket = io.connect(url + '/rpc', handshake);
-	socketHandlers(socket, {});
+	var tree = {};
+	socketHandlers(socket, tree);
 	var rpc = socket.rpc;
+	/**
+	 * @param toExtendWith {Object}
+	 */
+	rpc.expose = function(toExtendWith) {
+		assign(tree, toExtendWith);
+	};
 	rpc.socket = socket;
 
 	if (!RPCBackend.defaultBackend) {

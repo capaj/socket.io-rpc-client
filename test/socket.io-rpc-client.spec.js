@@ -47,10 +47,11 @@ describe("simple tree of remote methods", function(){
 		})
 	});
 
-	it('should reject a promise returned by calling a failingMethod', function(done){
-		remoteMethods.failingMethod().catch(function(err) {
+	it('should reject a promise returned by calling a failingMethod', function(){
+		return remoteMethods.failingMethod().then(function (){
+			throw new Error('This should not have resolved');
+		}, function(err) {
 			err.message.should.eql('Sample error');
-			done();
 		});
 	});
 
