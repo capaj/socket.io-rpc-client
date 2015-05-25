@@ -7,15 +7,24 @@ var rpc = rpcClient('http://localhost:8031');
 describe("simple tree of remote methods", function(){
 
 	this.timeout(10000);
+
 	var remoteMethods;
 	before(function(done) {
-			rpc.fetchNode('test')
-				.then(function(chnl) {
-					remoteMethods = chnl;
-					done()
-				}, function(err) {
-					throw err;
-				});
+		server.on('message', function(msg) {
+			if (msg === 'initialized') {
+				setTimeout(function(){
+					rpc.fetchNode('test')
+						.then(function(chnl) {
+							remoteMethods = chnl;
+							done()
+						}, function(err) {
+							throw err;
+						});
+				}, 100);
+
+			}
+
+		});
 	});
 
 	it('should have 3 methods on that node', function(){

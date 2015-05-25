@@ -14,3 +14,4 @@ var app = server.expressApp;
 app.use(require('morgan')('dev'));
 app.use(express.static(__dirname));
 
+process.send('initialized');
