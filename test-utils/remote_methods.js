@@ -9,14 +9,14 @@ module.exports = {
 		return new Promise(function (resolve, reject){
 			setTimeout(function() {
 				resolve("String generated asynchronously serverside with " + param);
-			}, 1000);
+			}, 100);
 		})
 	},
 	failingMethod: function() {
 		return new Promise(function (resolve, reject){
 			setTimeout(function() {
 				reject(new Error("Sample error"));
-			}, 1000);
+			}, 100);
 		})
 	}
 };
