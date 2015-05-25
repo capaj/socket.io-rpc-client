@@ -6,15 +6,16 @@ var rpc = rpcClient('http://localhost:8031');
 
 describe("simple tree of remote methods", function(){
 
-	//this.timeout(10000);
+	this.timeout(10000);
 	var remoteMethods;
-	before(function() {
-		return rpc.fetchNode('test')
-			.then(function(chnl) {
-				remoteMethods = chnl;
-			}, function(err) {
-				throw err;
-			});
+	before(function(done) {
+			rpc.fetchNode('test')
+				.then(function(chnl) {
+					remoteMethods = chnl;
+					done()
+				}, function(err) {
+					throw err;
+				});
 	});
 
 	it('should have 3 methods on that node', function(){
@@ -90,16 +91,16 @@ describe("simple tree of remote methods", function(){
 	});
 });
 
-//describe('initialization', function() {
-//	it('trying to fetch node on a wrong port should reject the promise', function() {
-//		this.timeout(8000);
-//
-//		var failingRPC = rpcClient('http://localhost:8666');
-//		return failingRPC.fetchNode('test')
-//			.then(function() {
-//				throw new Error('this should not happen');	//do you have some RPC server running on 8666?
-//			}, function(err) {
-//				err.message.should.equal('xhr poll error');
-//			});
-//	});
-//});
+describe('initialization', function() {
+	it('trying to fetch node on a wrong port should reject the promise', function() {
+		this.timeout(8000);
+
+		var failingRPC = rpcClient('http://localhost:8666');
+		return failingRPC.fetchNode('test')
+			.then(function() {
+				throw new Error('this should not happen');	//do you have some RPC server running on 8666?
+			}, function(err) {
+				err.message.should.equal('xhr poll error');
+			});
+	});
+});
