@@ -1,5 +1,5 @@
 require('error-tojson');
-var socketHandlers = require('./socket.io-rpc-event-handlers/socket-event-handlers');
+var socketHandlers = require('socket.io-rpc-event-handlers');
 var io = require('socket.io-client');
 var assign = require('lodash.assign');
 var backends = {};
