@@ -34,12 +34,12 @@
   "jspm": {
     "dependencies": {
 	  "debug": "npm:debug@^2.2.0",
-	  "socket.io-client": "^1.3",
 	  "error-tojson": "npm:error-tojson@^0.0.1",
 	  "lodash.assign": "npm:lodash.assign@^3.2.0",
-	  "traverse": "npm:traverse@^0.6.6",
-      "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^0.1.1"
-    }
+	  "socket.io-client": "^1.3",
+	  "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^0.1.2",
+	  "traverse": "npm:traverse@^0.6.6"
+	}
   },
   "engines": {
     "node": "^0.12.0"
