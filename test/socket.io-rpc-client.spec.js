@@ -57,6 +57,9 @@ describe("simple tree of remote methods", function(){
 			}),
 			rpc('test.myAsyncTest')('myParam').then(function (ret){
 				ret.should.equal('String generated asynchronously serverside with myParam');
+			}),
+			rpc('test.testFunc')().then(function (ret){
+				ret.should.equal('second expose');
 			})
 		]);
 

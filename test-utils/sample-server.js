@@ -10,6 +10,14 @@ server.expose({
 	}
 });
 
+server.expose({
+	test: {
+		testFunc: function() {
+			return 'second expose';
+		}
+	}
+});
+
 var app = server.expressApp;
 app.use(require('morgan')('dev'));
 app.use(express.static(__dirname));

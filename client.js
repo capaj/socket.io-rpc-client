@@ -1,7 +1,8 @@
 require('error-tojson');
+require('o.extend');
+
 var socketHandlers = require('socket.io-rpc-event-handlers');
 var io = require('socket.io-client');
-var assign = require('lodash.assign');
 var backends = {};
 
 /**
@@ -34,13 +35,9 @@ module.exports = function RPCBackend(url, handshake) {
 		if (typeof toExtendWith !== 'object') {
 			throw new TypeError('object expected as first argument');
 		}
-		assign(tree, toExtendWith);
+		Object.extend(tree, toExtendWith);
 	};
 	rpc.socket = socket;
-
-	if (!RPCBackend.defaultBackend) {
-		RPCBackend.defaultBackend = rpc;   //the first rpc connection is the default, if you want, you can set some other
-	}
 
 	backends[url] = rpc;
 	return rpc;	//an instance of backend

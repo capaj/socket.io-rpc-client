@@ -1,6 +1,6 @@
 {
   "name": "socket.io-rpc-client",
-  "version": "0.9.10",
+  "version": "0.9.11",
   "description": "client for socket.io-rpc compatible with node/browser/angular",
   "main": "client.js",
   "scripts": {
@@ -19,7 +19,7 @@
   "dependencies": {
     "debug": "^2.2.0",
     "error-tojson": "0.0.1",
-    "lodash.assign": "^3.2.0",
+	"o.extend": "^1.0.0",
     "socket.io-client": "^1.3",
     "socket.io-rpc-event-handlers": "git+https://github.com/capaj/socket.io-rpc-event-handlers.git",
     "traverse": "^0.6.6"
@@ -29,16 +29,16 @@
     "express": "~4",
     "mocha": "^2.2.5",
     "morgan": "^1.5.3",
-    "socket.io-rpc": "^0.9.7"
+    "socket.io-rpc": "^0.9.8"
   },
   "jspm": {
     "dependencies": {
 	  "debug": "npm:debug@^2.2.0",
 	  "error-tojson": "npm:error-tojson@^0.0.1",
-	  "lodash.assign": "npm:lodash.assign@^3.2.0",
 	  "socket.io-client": "^1.3",
 	  "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^0.1.2",
-	  "traverse": "npm:traverse@^0.6.6"
+	  "traverse": "npm:traverse@^0.6.6",
+	  "o.extend": "npm:o.extend@^1.0.0"
 	}
   },
   "engines": {
