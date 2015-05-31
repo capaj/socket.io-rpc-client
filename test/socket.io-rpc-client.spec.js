@@ -81,6 +81,15 @@ describe("simple tree of remote methods", function(){
 		});
 	});
 
+	it('should throw type error when trying to expose anything else than an object', function(){
+		try{
+			rpc.expose('string');
+		}catch(err){
+			err.message.should.equal('object expected as first argument');
+		}
+
+	});
+
 	it('server methods should no longer be callable after client disconnects', function(done) {
 		server.kill();
 
@@ -112,4 +121,5 @@ describe('initialization', function() {
 				err.message.should.equal('xhr poll error');
 			});
 	});
+
 });

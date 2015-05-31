@@ -31,6 +31,9 @@ module.exports = function RPCBackend(url, handshake) {
 	 * @param toExtendWith {Object}
 	 */
 	rpc.expose = function(toExtendWith) {
+		if (typeof toExtendWith !== 'object') {
+			throw new TypeError('object expected as first argument');
+		}
 		assign(tree, toExtendWith);
 	};
 	rpc.socket = socket;
