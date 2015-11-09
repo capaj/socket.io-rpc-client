@@ -1,4 +1,3 @@
-require('error-tojson');
 require('o.extend');
 
 var socketHandlers = require('socket.io-rpc-event-handlers');
