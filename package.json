@@ -20,7 +20,7 @@
     "debug": "^2.2.0",
 	  "o.extend": "^1.0.0",
     "socket.io-client": "^1.3",
-    "socket.io-rpc-event-handlers": "git@github.com:capaj/socket.io-rpc-event-handlers.git#11c86ae3c5740f0a264e7c8fad9285ea896cc7ef",
+    "socket.io-rpc-event-handlers": "git+https://github.com/capaj/socket.io-rpc-event-handlers.git#11c86ae3c5740f0a264e7c8fad9285ea896cc7ef",
     "traverse": "^0.6.6"
   },
   "devDependencies": {
