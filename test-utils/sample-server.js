@@ -1,8 +1,9 @@
 var RPC = require('socket.io-rpc');
 var express = require('express');
 var port = 8031;
-
-var server = RPC(port);
+var app = express()
+var httpServer = require('http').Server(app)
+var server = RPC(httpServer);
 server.expose({
 	test: require('./remote_methods'),
 	plain: function(){
@@ -18,8 +19,10 @@ server.expose({
 	}
 });
 
-var app = server.expressApp;
 app.use(require('morgan')('dev'));
 app.use(express.static(__dirname));
 
-process.send('initialized');
+httpServer.listen(port, () => {
+	console.log('list')
+	process.send('initialized');
+})

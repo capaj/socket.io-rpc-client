@@ -80,7 +80,7 @@ describe("simple tree of remote methods", function(){
 		return rpc('weDidNotDefineIt')().then(function() {
 			throw new Error('This should not have resolved');
 		}, function(err) {
-			err.message.should.equal('function is not exposed: weDidNotDefineIt');
+			err.message.should.equal('no function exposed on: weDidNotDefineIt');
 		});
 	});
 
@@ -110,6 +110,10 @@ describe("simple tree of remote methods", function(){
 			});
 		}, 100);
 	});
+
+	after(() => {
+		server.kill();
+	})
 });
 
 describe('initialization', function() {
