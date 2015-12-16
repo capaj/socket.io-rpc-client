@@ -15,7 +15,7 @@ var rpcClient = require('socket.io-rpc-client');
 var rpc = rpcClient('http://localhost:8032');
 //call to the server
 rpc('plain')().then(function(ret) {
-	console.log('plain returned ', ret);	//for test-utils/sample-server.js server prints out: plain returned 41 
+	console.log('plain returned ', ret);	//for test-utils/sample-server.js server prints out: plain returned 41
 });
 //expose some for the server to call
 rpc.expose({
@@ -49,3 +49,4 @@ myChannel.getTime().then(t => { //calls getTime function on the server
 ```
 
 For complete examples including server side refer to [socket.io-rpc project](https://github.com/capaj/socket.io-rpc)
+[![js-standard-style](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
