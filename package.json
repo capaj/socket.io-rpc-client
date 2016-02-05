@@ -1,6 +1,6 @@
 {
   "name": "socket.io-rpc-client",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "client for socket.io-rpc compatible with node and other es5 envs",
   "main": "client.js",
   "scripts": {
@@ -20,9 +20,9 @@
   ],
   "dependencies": {
     "debug": "^2.2.0",
-    "o.extend": "^1.0.0",
+    "o.extend": "^1.0.1",
     "socket.io-client": "^1.4",
-    "socket.io-rpc-event-handlers": "git+https://github.com/capaj/socket.io-rpc-event-handlers.git#1.1.1",
+    "socket.io-rpc-event-handlers": "git+https://github.com/capaj/socket.io-rpc-event-handlers.git#1.1.4",
     "traverse": "^0.6.6"
   },
   "devDependencies": {
@@ -38,7 +38,7 @@
     "dependencies": {
       "debug": "npm:debug@^2.2.0",
       "socket.io-client": "^1.4",
-      "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^1.1.1",
+      "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^1.1.4",
       "traverse": "npm:traverse@^0.6.6",
       "o.extend": "npm:o.extend@^1.0.1"
     }
