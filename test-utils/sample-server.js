@@ -4,6 +4,11 @@ var port = 8031
 var app = express()
 var httpServer = require('http').Server(app)
 var server = RPC(httpServer)
+
+server.io.on('connect', (socket) => {
+  // console.log('connected', socket.id)
+})
+
 server.expose({
   test: require('./remote_methods'),
   plain: function () {
@@ -23,6 +28,5 @@ app.use(require('morgan')('dev'))
 app.use(express.static(__dirname))
 
 httpServer.listen(port, () => {
-  console.log('list')
   process.send('initialized')
 })

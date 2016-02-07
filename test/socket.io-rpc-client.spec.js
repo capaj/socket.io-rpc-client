@@ -1,12 +1,18 @@
 /* eslint-env node, mocha */
+'use strict'
 require('chai').should()
 var rpcClient = require('../client')
 var cp = require('child_process')
-var server = cp.fork('./test-utils/sample-server.js')
 var rpc = rpcClient('http://localhost:8031')
 
 describe('simple tree of remote methods', function () {
+  var server = cp.fork('./test-utils/sample-server.js')
   this.timeout(10000)
+  let server2
+  process.on('exit', function () {
+    server.kill()
+    server2.kill()
+  })
 
   var remoteMethods
   before(function (done) {
@@ -89,26 +95,23 @@ describe('simple tree of remote methods', function () {
     }
   })
 
-  it('server methods should no longer be callable after client disconnects', function (done) {
+  it('server call should be queued after disconnection, and called when server restarts', function (done) {
+    // this is inherent property of socket.io
     server.kill()
-
-    rpc('plain')().then(function () {
-      throw new Error('This should not have resolved')
-    }, function (err) {
-      err.message.should.match(/socket (.*) disconnected before returning, call rejected/)
-    })
-    setTimeout(function () {
-      rpc('fnOnClient')().then(function () {
-        throw new Error('This should not have resolved')
-      }, function (err) {
-        err.message.should.match(/socket (.*) disconnected, call rejected/)
+    rpc.socket.on('disconnect', function () {
+      server2 = cp.fork('./test-utils/sample-server.js')
+      rpc('plain')().then(function () {
         done()
+      }, (e) => {
+        setTimeout(() => {
+          throw e
+        })
       })
-    }, 100)
+    })
   })
 
   after(() => {
-    server.kill()
+    // server2.kill() // doesn't work. why?
   })
 })
 
