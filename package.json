@@ -22,7 +22,7 @@
     "debug": "^2.2.0",
     "o.extend": "^1.0.1",
     "socket.io-client": "^1.4",
-    "socket.io-rpc-event-handlers": "git+https://github.com/capaj/socket.io-rpc-event-handlers.git#1.1.6",
+    "socket.io-rpc-event-handlers": "git+https://github.com/capaj/socket.io-rpc-event-handlers.git#1.1.7",
     "traverse": "^0.6.6"
   },
   "devDependencies": {
@@ -38,7 +38,7 @@
     "dependencies": {
       "debug": "npm:debug@^2.2.0",
       "socket.io-client": "^1.4",
-      "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^1.1.6",
+      "socket.io-rpc-event-handlers": "github:capaj/socket.io-rpc-event-handlers@^1.1.7",
       "traverse": "npm:traverse@^0.6.6",
       "o.extend": "npm:o.extend@^1.0.1"
     }
